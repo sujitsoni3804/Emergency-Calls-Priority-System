@@ -1,0 +1,2 @@
+Kaggle : 911 Emergency Calls Dataset - https://www.kaggle.com/datasets/louisteitelbaum/911-recordings (708 recordings)
+Youtube : Playlist of 911 Emergency Call recordings - https://youtube.com/playlist?list=PLplPIyOskVhxAgGQsNjRoXykxV0u41zbl&si=GjYaEvTJM1rmRUBs

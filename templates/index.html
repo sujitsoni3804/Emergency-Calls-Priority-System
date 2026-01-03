@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Transcription Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚨</text></svg>">
+    <style>
+        body { background: #0a0e27; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .speaker-0 { color: #667eea; }
+        .speaker-1 { color: #f093fb; }
+        .speaker-2 { color: #4facfe; }
+        .speaker-3 { color: #43e97b; }
+        .speaker-4 { color: #fa709a; }
+        .transcript-item { transition: all 0.3s; }
+        .transcript-item.active { background: rgba(102, 126, 234, 0.2); transform: scale(1.01); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
+        .upload-zone { transition: all 0.3s; }
+        .upload-zone:hover { transform: translateY(-2px); border-color: #667eea; background: rgba(102, 126, 234, 0.05); }
+        .btn { transition: all 0.3s; cursor: pointer; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+        .btn:active { transform: translateY(0); }
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite;
+        }
+        .file-item { background: rgba(255, 255, 255, 0.03); padding: 0.5rem; border-radius: 0.5rem; margin-bottom: 0.5rem; }
+        @media (max-width: 768px) {
+            .transcript-item.active { transform: scale(1); }
+            .upload-zone:hover { transform: translateY(0); }
+            .btn:hover { transform: translateY(0); }
+        }
+        </style>
+</head>
+<body class="text-white">
+    <div class="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 max-w-6xl">
+        <div class="text-center mb-6 sm:mb-8 md:mb-12">
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold mb-2 sm:mb-3 md:mb-4">Audio Transcription</h1>
+            <p class="text-gray-400 text-sm sm:text-base md:text-lg px-4">AI-powered speaker diarization and transcription</p>
+        </div>
+        
+        <div class="text-center mb-6 sm:mb-8">
+            <a href="/dashboard" class="btn bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-8 py-4 sm:px-10 sm:py-5 md:px-12 md:py-6 rounded-xl font-bold text-base sm:text-lg md:text-xl inline-flex items-center gap-3 shadow-lg">
+                <svg class="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                View Analytics Dashboard
+            </a>
+        </div>
+
+        <div id="uploadSection" class="glass rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 mb-4 sm:mb-6 md:mb-8">
+            <div class="upload-zone border-2 border-dashed border-gray-600 rounded-lg sm:rounded-xl p-6 sm:p-8 md:p-12 text-center cursor-pointer mb-4" onclick="document.getElementById('fileInput').click()">
+                <svg class="mx-auto h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 text-gray-400 mb-3 sm:mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+                <p class="text-base sm:text-lg md:text-xl mb-1 sm:mb-2">Click to upload single file</p>
+                <p class="text-gray-400 text-xs sm:text-sm md:text-base">Audio or video files supported</p>
+                <input type="file" id="fileInput" class="hidden" accept="audio/*,video/*" onchange="FileUpload.uploadSingle(this.files[0])">
+            </div>
+            
+            <div class="upload-zone border-2 border-dashed border-gray-600 rounded-lg sm:rounded-xl p-6 sm:p-8 md:p-12 text-center cursor-pointer" onclick="document.getElementById('multiFileInput').click()">
+                <svg class="mx-auto h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 text-purple-400 mb-3 sm:mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <p class="text-base sm:text-lg md:text-xl mb-1 sm:mb-2">Click to upload multiple files</p>
+                <p class="text-gray-400 text-xs sm:text-sm md:text-base">Process multiple files in parallel</p>
+                <input type="file" id="multiFileInput" class="hidden" accept="audio/*,video/*" multiple onchange="FileUpload.uploadMultiple(this.files)">
+            </div>
+        </div>
+
+
+        <div id="processingSection" class="hidden"></div>
+        <div id="resultSection" class="hidden"></div>
+    </div>
+
+    <script>
+        const State = {
+            activeJobs: new Map(),
+            summaryIntervals: new Map(),
+            completedJobs: new Set()
+        };
+
+        const FileUpload = {
+            async uploadSingle(file) {
+                if (!file) return;
+                const formData = new FormData();
+                formData.append('file', file);
+                UI.hideUpload();
+                UI.showProcessing([{filename: file.name}]);
+                const response = await fetch('/upload', { method: 'POST', body: formData });
+                const data = await response.json();
+                State.activeJobs.set(data.job_id, {filename: data.filename, isSingle: true});
+                Progress.monitor(data.job_id);
+            },
+
+            async uploadMultiple(files) {
+                if (!files || files.length === 0) return;
+                const formData = new FormData();
+                Array.from(files).forEach(file => formData.append('files', file));
+                UI.hideUpload();
+                const fileList = Array.from(files).map(f => ({filename: f.name}));
+                UI.showProcessing(fileList);
+                const response = await fetch('/upload-multiple', { method: 'POST', body: formData });
+                const data = await response.json();
+                data.jobs.forEach(job => {
+                    State.activeJobs.set(job.job_id, {filename: job.filename, isSingle: false});
+                    Progress.monitor(job.job_id);
+                });
+            }
+        };
+
+        const Progress = {
+            monitor(jobId) {
+                const eventSource = new EventSource(`/progress/${jobId}`);
+                eventSource.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    UI.updateProgress(jobId, data);
+                    if (data.progress === 100 && data.result) {
+                        eventSource.close();
+                        State.completedJobs.add(jobId);
+                        const jobData = State.activeJobs.get(jobId);
+                        UI.markJobComplete(jobId);
+                        if (jobData.isSingle) {
+                            UI.displayResult(data.result);
+                            Summary.startPolling(jobId);
+                        } else {
+                            if (State.completedJobs.size === State.activeJobs.size) {
+                                setTimeout(() => window.location.href = '/dashboard', 2000);
+                            }
+                        }
+                    } else if (data.progress === 0 && data.status.startsWith('Error')) {
+                        eventSource.close();
+                        UI.markJobError(jobId, data.status);
+                        State.activeJobs.delete(jobId);
+                        if (State.activeJobs.size === 0) UI.reset();
+                    }
+                };
+            }
+        };
+
+        const Summary = {
+            startPolling(jobId) {
+                document.getElementById('summaryStatusBadge').classList.remove('hidden');
+                document.getElementById('summaryStatusBadge').classList.add('bg-blue-600');
+                const interval = setInterval(async () => {
+                    try {
+                        const response = await fetch(`/summary_status/${jobId}`);
+                        const data = await response.json();
+                        if (data.summary_status === 'completed') {
+                            clearInterval(interval);
+                            State.summaryIntervals.delete(jobId);
+                            document.getElementById('summaryContent').textContent = data.summary;
+                            document.getElementById('summaryStatusBadge').classList.add('hidden');
+                            document.getElementById('summaryDownloadBtn').disabled = false;
+                        } else if (data.summary_status === 'error') {
+                            clearInterval(interval);
+                            State.summaryIntervals.delete(jobId);
+                            document.getElementById('summaryContent').textContent = data.summary;
+                            document.getElementById('summaryStatusBadge').innerHTML = '<span class="text-red-400">⚠ Error</span>';
+                            document.getElementById('summaryStatusBadge').classList.remove('bg-blue-600');
+                            document.getElementById('summaryStatusBadge').classList.add('bg-red-600');
+                        }
+                    } catch (err) {
+                        console.error('Error checking summary status:', err);
+                    }
+                }, 1000);
+                State.summaryIntervals.set(jobId, interval);
+            }
+        };
+
+        const UI = {
+            hideUpload() {
+                document.getElementById('uploadSection').classList.add('hidden');
+            },
+
+            showProcessing(files) {
+                const section = document.getElementById('processingSection');
+                section.innerHTML = '';
+                files.forEach((file, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'glass rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 mb-4';
+                    div.id = `processing-${idx}`;
+                    div.innerHTML = `
+                        <div class="flex items-center mb-4">
+                            <div class="spinner-container">
+                                <div class="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-500 mr-3 sm:mr-4"></div>
+                            </div>
+                            <span class="text-sm sm:text-base md:text-lg status-text">${file.filename} - Processing...</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2 sm:h-3">
+                            <div class="progress-bar gradient-bg h-2 sm:h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    `;
+                    section.appendChild(div);
+                });
+                section.classList.remove('hidden');
+                document.getElementById('resultSection').classList.add('hidden');
+            },
+
+            updateProgress(jobId, data) {
+                const jobData = State.activeJobs.get(jobId);
+                const index = Array.from(State.activeJobs.keys()).indexOf(jobId);
+                const container = document.getElementById(`processing-${index}`);
+                if (container) {
+                    const statusSpan = container.querySelector('.status-text');
+                    const progressBar = container.querySelector('.progress-bar');
+                    statusSpan.textContent = `${jobData.filename} - ${data.status}`;
+                    progressBar.style.width = data.progress + '%';
+                }
+            },
+
+            markJobComplete(jobId) {
+                const index = Array.from(State.activeJobs.keys()).indexOf(jobId);
+                const container = document.getElementById(`processing-${index}`);
+                if (container) {
+                    const spinnerContainer = container.querySelector('.spinner-container');
+                    spinnerContainer.innerHTML = '<svg class="h-6 w-6 sm:h-8 sm:w-8 text-green-500 mr-3 sm:mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+                    const statusSpan = container.querySelector('.status-text');
+                    statusSpan.textContent = `${State.activeJobs.get(jobId).filename} - Completed ✓`;
+                }
+            },
+
+            markJobError(jobId, error) {
+                const index = Array.from(State.activeJobs.keys()).indexOf(jobId);
+                const container = document.getElementById(`processing-${index}`);
+                if (container) {
+                    const spinnerContainer = container.querySelector('.spinner-container');
+                    spinnerContainer.innerHTML = '<svg class="h-6 w-6 sm:h-8 sm:w-8 text-red-500 mr-3 sm:mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+                    const statusSpan = container.querySelector('.status-text');
+                    statusSpan.textContent = `${State.activeJobs.get(jobId).filename} - ${error}`;
+                }
+            },
+
+            displayResult(result) {
+                document.getElementById('processingSection').classList.add('hidden');
+                const section = document.getElementById('resultSection');
+                section.innerHTML = `
+                    <div class="glass rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 mb-4 sm:mb-6 md:mb-8">
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 mb-4">
+                            <h2 class="text-xl sm:text-2xl font-bold">Audio Player</h2>
+                            <div class="flex flex-wrap gap-2 sm:gap-3">
+                                <button onclick="Download.file('json')" class="btn gradient-bg px-3 py-2 sm:px-4 sm:py-2 md:px-5 rounded-lg font-semibold flex items-center gap-1 sm:gap-2 text-xs sm:text-sm md:text-base flex-1 sm:flex-initial justify-center min-w-[80px]">
+                                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                    </svg>
+                                    JSON
+                                </button>
+                                <button onclick="Download.file('txt')" class="btn gradient-bg px-3 py-2 sm:px-4 sm:py-2 md:px-5 rounded-lg font-semibold flex items-center gap-1 sm:gap-2 text-xs sm:text-sm md:text-base flex-1 sm:flex-initial justify-center min-w-[80px]">
+                                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                    </svg>
+                                    Text
+                                </button>
+                                <button id="summaryDownloadBtn" onclick="Download.file('summary')" class="btn gradient-bg px-3 py-2 sm:px-4 sm:py-2 md:px-5 rounded-lg font-semibold flex items-center gap-1 sm:gap-2 text-xs sm:text-sm md:text-base flex-1 sm:flex-initial justify-center min-w-[90px] disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    Summary
+                                </button>
+                                <button onclick="UI.reset()" class="btn bg-green-600 hover:bg-green-700 px-3 py-2 sm:px-4 sm:py-2 md:px-5 rounded-lg font-semibold flex items-center gap-1 sm:gap-2 text-xs sm:text-sm md:text-base flex-1 sm:flex-initial justify-center min-w-[100px]">
+                                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                    </svg>
+                                    Upload New
+                                </button>
+                            </div>
+                        </div>
+                        <audio id="audioPlayer" controls class="w-full mb-2" ontimeupdate="Transcript.sync()"></audio>
+                        <div class="flex justify-end">
+                            <span id="timeTaken" class="text-xs sm:text-sm text-gray-400 italic"></span>
+                        </div>
+                    </div>
+
+                    <div class="glass rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 mb-4 sm:mb-6">
+                        <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Transcript</h2>
+                        <div id="transcript" class="space-y-2 max-h-[400px] sm:max-h-[500px] md:max-h-[600px] overflow-y-auto pr-1 sm:pr-2"></div>
+                    </div>
+
+                    <div class="glass rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6">
+                        <div class="flex items-center justify-between mb-3 sm:mb-4">
+                            <h2 class="text-lg sm:text-xl font-bold">AI Generated Summary</h2>
+                            <div id="summaryStatusBadge" class="hidden px-3 py-1 rounded-full text-xs font-semibold">
+                                <div class="flex items-center gap-2">
+                                    <div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                                    <span>Generating...</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="summaryContent" class="text-sm sm:text-base leading-relaxed text-gray-300">
+                            <div class="skeleton h-4 rounded mb-2"></div>
+                            <div class="skeleton h-4 rounded mb-2 w-11/12"></div>
+                            <div class="skeleton h-4 rounded w-10/12"></div>
+                        </div>
+                    </div>
+                `;
+                section.classList.remove('hidden');
+                Transcript.load(result);
+            },
+
+            reset() {
+                State.summaryIntervals.forEach(interval => clearInterval(interval));
+                State.summaryIntervals.clear();
+                State.activeJobs.clear();
+                State.completedJobs.clear();
+                const audio = document.getElementById('audioPlayer');
+                if (audio) {
+                    audio.pause();
+                    audio.currentTime = 0;
+                    audio.src = '';
+                }
+                document.getElementById('uploadSection').classList.remove('hidden');
+                document.getElementById('processingSection').classList.add('hidden');
+                document.getElementById('resultSection').classList.add('hidden');
+                document.getElementById('fileInput').value = '';
+                document.getElementById('multiFileInput').value = '';
+            }
+        };
+
+        const Transcript = {
+            data: [],
+
+            load(result) {
+                this.data = result.transcript;
+                const audio = document.getElementById('audioPlayer');
+                audio.src = `/audio/${result.job_id}`;
+                if (result.time_taken) {
+                    document.getElementById('timeTaken').textContent = `Processing Time: ${this.formatTime(result.time_taken)}`;
+                }
+                const container = document.getElementById('transcript');
+                container.innerHTML = '';
+                const speakerColors = ['speaker-0', 'speaker-1', 'speaker-2', 'speaker-3', 'speaker-4'];
+                const speakerMap = result.speaker_map || {};
+                const speakerToIndex = {};
+                Object.keys(speakerMap).forEach((key, index) => {
+                    speakerToIndex[key] = index;
+                });
+                result.transcript.forEach((item, idx) => {
+                    const colorClass = speakerColors[speakerToIndex[item.speaker] % speakerColors.length];
+                    const div = document.createElement('div');
+                    div.className = 'transcript-item glass rounded-lg p-2 sm:p-3 cursor-pointer hover:bg-opacity-10';
+                    div.id = `transcript-${idx}`;
+                    div.dataset.start = item.start;
+                    div.dataset.end = item.end;
+                    div.onclick = () => this.seek(item.start);
+                    div.innerHTML = `
+                        <div class="flex items-center gap-1 sm:gap-2 mb-1">
+                            <span class="${colorClass} font-bold text-xs sm:text-sm">${speakerMap[item.speaker]}</span>
+                            <span class="text-gray-500 text-xs">${item.start}s - ${item.end}s</span>
+                        </div>
+                        <p class="text-xs sm:text-sm leading-relaxed">${item.text}</p>
+                    `;
+                    container.appendChild(div);
+                });
+            },
+
+            sync() {
+                const audio = document.getElementById('audioPlayer');
+                const currentTime = audio.currentTime;
+                this.data.forEach((item, idx) => {
+                    const elem = document.getElementById(`transcript-${idx}`);
+                    if (currentTime >= item.start && currentTime <= item.end) {
+                        elem.classList.add('active');
+                        elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } else {
+                        elem.classList.remove('active');
+                    }
+                });
+            },
+
+            seek(time) {
+                const audio = document.getElementById('audioPlayer');
+                audio.currentTime = time;
+                audio.play();
+            },
+
+            formatTime(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                if (mins === 0) return `${secs} second${secs !== 1 ? 's' : ''}`;
+                return `${mins} minute${mins !== 1 ? 's' : ''} ${secs} second${secs !== 1 ? 's' : ''}`;
+            }
+        };
+
+        const Download = {
+            file(format) {
+                const jobId = Array.from(State.activeJobs.keys())[0];
+                if (!jobId) return;
+                window.location.href = `/download/${jobId}/${format}`;
+            }
+        };
+    </script>
+</body>
+</html>

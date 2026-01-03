@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Transcript - Audio Transcription</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎧</text></svg>">
+    <style>
+        body { background: #0a0e27; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .speaker-0 { color: #667eea; }
+        .speaker-1 { color: #f093fb; }
+        .speaker-2 { color: #4facfe; }
+        .speaker-3 { color: #43e97b; }
+        .speaker-4 { color: #fa709a; }
+        .transcript-item { transition: all 0.3s; }
+        .transcript-item.active { background: rgba(102, 126, 234, 0.2); transform: scale(1.01); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
+        .btn { transition: all 0.3s; cursor: pointer; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+        .btn:active { transform: translateY(0); }
+        @media (max-width: 768px) {
+            .transcript-item.active { transform: scale(1); }
+            .btn:hover { transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="text-white">
+    <div class="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 max-w-6xl">
+        <div class="flex justify-between items-center mb-6 sm:mb-8">
+            <div>
+                <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold">Transcript Viewer</h1>
+                <div class="mt-2 space-y-1">
+                    <p id="filenameDisplay" class="text-sm sm:text-base text-gray-400"></p>
+                    <p id="jobIdDisplay" class="text-xs sm:text-sm text-gray-500 font-mono"></p>
+                </div>
+            </div>
+            <a href="/dashboard" class="btn gradient-bg px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-semibold hover:opacity-90 transition text-sm sm:text-base">
+                ← Back to Dashboard
+            </a>
+        </div>
+
+        <div id="loadingSection" class="glass rounded-xl sm:rounded-2xl p-8 text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p class="text-lg">Loading transcript...</p>
+        </div>
+
+        <div id="contentSection" class="hidden">
+            <div class="glass rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 mb-4 sm:mb-6 md:mb-8">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 mb-4">
+                    <h2 class="text-xl sm:text-2xl font-bold">Audio Player</h2>
+                    <div class="flex flex-wrap gap-2 sm:gap-3">
+                        <button onclick="Download.file('json')" class="btn gradient-bg px-3 py-2 sm:px-4 sm:py-2 md:px-5 rounded-lg font-semibold flex items-center gap-1 sm:gap-2 text-xs sm:text-sm md:text-base flex-1 sm:flex-initial justify-center min-w-[80px]">
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            JSON
+                        </button>
+                        <button onclick="Download.file('txt')" class="btn gradient-bg px-3 py-2 sm:px-4 sm:py-2 md:px-5 rounded-lg font-semibold flex items-center gap-1 sm:gap-2 text-xs sm:text-sm md:text-base flex-1 sm:flex-initial justify-center min-w-[80px]">
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            Text
+                        </button>
+                        <button onclick="Download.file('summary')" class="btn gradient-bg px-3 py-2 sm:px-4 sm:py-2 md:px-5 rounded-lg font-semibold flex items-center gap-1 sm:gap-2 text-xs sm:text-sm md:text-base flex-1 sm:flex-initial justify-center min-w-[90px]">
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            Summary
+                        </button>
+                    </div>
+                </div>
+                <audio id="audioPlayer" controls class="w-full mb-2" ontimeupdate="Transcript.sync()"></audio>
+                <div class="flex justify-end">
+                    <span id="timeTaken" class="text-xs sm:text-sm text-gray-400 italic"></span>
+                </div>
+            </div>
+
+            <div class="glass rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 mb-4 sm:mb-6">
+                <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Transcript</h2>
+                <div id="transcript" class="space-y-2 max-h-[400px] sm:max-h-[500px] md:max-h-[600px] overflow-y-auto pr-1 sm:pr-2"></div>
+            </div>
+
+            <div class="glass rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6">
+                <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">AI Generated Summary</h2>
+                <div id="summaryContent" class="text-sm sm:text-base leading-relaxed text-gray-300"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const State = {
+            jobId: null,
+            transcriptData: [],
+            filename: null
+        };
+
+        const App = {
+            async init() {
+                const pathParts = window.location.pathname.split('/');
+                State.jobId = pathParts[pathParts.length - 1];
+                document.getElementById('jobIdDisplay').textContent = `Job ID: ${State.jobId}`;
+                await this.loadTranscript();
+            },
+
+            async loadTranscript() {
+                try {
+                    const response = await fetch(`/api/transcript/${State.jobId}`);
+                    if (!response.ok) throw new Error('Transcript not found');
+                    const data = await response.json();
+                    State.filename = data.filename || 'Unknown';
+                    document.getElementById('filenameDisplay').textContent = `File: ${State.filename}`;
+                    document.getElementById('loadingSection').classList.add('hidden');
+                    document.getElementById('contentSection').classList.remove('hidden');
+                    Transcript.load(data);
+                } catch (err) {
+                    console.error('Error loading transcript:', err);
+                    document.getElementById('loadingSection').innerHTML = `
+                        <p class="text-red-400 text-lg">Error loading transcript. Please try again.</p>
+                        <a href="/dashboard" class="btn gradient-bg px-6 py-3 rounded-lg font-semibold inline-block mt-4">
+                            Back to Dashboard
+                        </a>
+                    `;
+                }
+            }
+        };
+
+        const Transcript = {
+            load(data) {
+                State.transcriptData = data.transcript;
+                const audio = document.getElementById('audioPlayer');
+                audio.src = `/audio/${State.jobId}`;
+                
+                if (data.time_taken) {
+                    document.getElementById('timeTaken').textContent = `Processing Time: ${this.formatTime(data.time_taken)}`;
+                }
+
+                if (data.summary) {
+                    document.getElementById('summaryContent').textContent = data.summary;
+                } else {
+                    document.getElementById('summaryContent').textContent = 'Summary not available';
+                }
+
+                const container = document.getElementById('transcript');
+                container.innerHTML = '';
+                const speakerColors = ['speaker-0', 'speaker-1', 'speaker-2', 'speaker-3', 'speaker-4'];
+                const speakerMap = data.speaker_map || {};
+                const speakerToIndex = {};
+                Object.keys(speakerMap).forEach((key, index) => {
+                    speakerToIndex[key] = index;
+                });
+
+                data.transcript.forEach((item, idx) => {
+                    const colorClass = speakerColors[speakerToIndex[item.speaker] % speakerColors.length];
+                    const div = document.createElement('div');
+                    div.className = 'transcript-item glass rounded-lg p-2 sm:p-3 cursor-pointer hover:bg-opacity-10';
+                    div.id = `transcript-${idx}`;
+                    div.dataset.start = item.start;
+                    div.dataset.end = item.end;
+                    
+                    if (item.start > 0 || item.end > 0) {
+                        div.onclick = () => this.seek(item.start);
+                    }
+                    
+                    const timeDisplay = (item.start > 0 || item.end > 0) 
+                        ? `<span class="text-gray-500 text-xs">${item.start}s - ${item.end}s</span>`
+                        : '';
+                    
+                    div.innerHTML = `
+                        <div class="flex items-center gap-1 sm:gap-2 mb-1">
+                            <span class="${colorClass} font-bold text-xs sm:text-sm">${speakerMap[item.speaker]}</span>
+                            ${timeDisplay}
+                        </div>
+                        <p class="text-xs sm:text-sm leading-relaxed">${item.text}</p>
+                    `;
+                    container.appendChild(div);
+                });
+            },
+
+            sync() {
+                const audio = document.getElementById('audioPlayer');
+                const currentTime = audio.currentTime;
+                State.transcriptData.forEach((item, idx) => {
+                    const elem = document.getElementById(`transcript-${idx}`);
+                    if (currentTime >= item.start && currentTime <= item.end) {
+                        elem.classList.add('active');
+                        elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } else {
+                        elem.classList.remove('active');
+                    }
+                });
+            },
+
+            seek(time) {
+                const audio = document.getElementById('audioPlayer');
+                audio.currentTime = time;
+                audio.play();
+            },
+
+            formatTime(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                if (mins === 0) return `${secs} second${secs !== 1 ? 's' : ''}`;
+                return `${mins} minute${mins !== 1 ? 's' : ''} ${secs} second${secs !== 1 ? 's' : ''}`;
+            }
+        };
+
+        const Download = {
+            file(format) {
+                window.location.href = `/download/${State.jobId}/${format}`;
+            }
+        };
+
+        App.init();
+    </script>
+</body>
+</html>

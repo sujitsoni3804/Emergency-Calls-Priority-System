@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Audio Transcription</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
+    <style>
+        body { background: #0a0e27; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .urgency-0 { background: rgba(100, 100, 100, 0.2); }
+        .urgency-1 { background: rgba(59, 130, 246, 0.2); }
+        .urgency-2 { background: rgba(34, 197, 94, 0.2); }
+        .urgency-3 { background: rgba(234, 179, 8, 0.2); }
+        .urgency-4 { background: rgba(249, 115, 22, 0.2); }
+        .urgency-5 { background: rgba(239, 68, 68, 0.2); }
+        .urgency-badge-0 { background: #64748b; }
+        .urgency-badge-1 { background: #3b82f6; }
+        .urgency-badge-2 { background: #22c55e; }
+        .urgency-badge-3 { background: #eab308; }
+        .urgency-badge-4 { background: #f97316; }
+        .urgency-badge-5 { background: #ef4444; }
+        table { border-collapse: separate; border-spacing: 0 0.75rem; }
+        .status-toggle { cursor: pointer; transition: all 0.3s; }
+        .status-toggle:hover { transform: scale(1.05); }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: #1a1f3a; border-radius: 1rem; padding: 2rem; max-width: 400px; width: 90%; border: 1px solid rgba(255,255,255,0.1); }
+        .stat-card { transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); }
+    </style>
+</head>
+<body class="text-white">
+    <div class="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 max-w-screen">
+        <div class="flex justify-between items-center mb-6 sm:mb-8">
+            <div>
+                <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">Transcription Dashboard</h1>
+                <p class="text-gray-400 text-sm sm:text-base">View and manage all transcription cases</p>
+            </div>
+            <a href="/" class="btn gradient-bg px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-semibold hover:opacity-90 transition text-sm sm:text-base">
+                ← New Upload
+            </a>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6">
+            <div class="glass rounded-xl p-3 sm:p-4 stat-card">
+                <div class="text-gray-400 text-xs sm:text-sm mb-1">Total Cases</div>
+                <div class="text-2xl sm:text-3xl font-bold" id="totalCases">0</div>
+            </div>
+            <div class="glass rounded-xl p-3 sm:p-4 stat-card">
+                <div class="text-gray-400 text-xs sm:text-sm mb-1">Unresolved</div>
+                <div class="text-2xl sm:text-3xl font-bold text-yellow-400" id="unresolvedCases">0</div>
+            </div>
+            <div class="glass rounded-xl p-3 sm:p-4 stat-card">
+                <div class="text-gray-400 text-xs sm:text-sm mb-1">Resolved</div>
+                <div class="text-2xl sm:text-3xl font-bold text-green-400" id="resolvedCases">0</div>
+            </div>
+            <div class="glass rounded-xl p-3 sm:p-4 stat-card">
+                <div class="text-gray-400 text-xs sm:text-sm mb-1">Urgency 0-1</div>
+                <div class="text-2xl sm:text-3xl font-bold text-blue-400" id="urgency01">0</div>
+            </div>
+            <div class="glass rounded-xl p-3 sm:p-4 stat-card">
+                <div class="text-gray-400 text-xs sm:text-sm mb-1">Urgency 2-3</div>
+                <div class="text-2xl sm:text-3xl font-bold text-yellow-400" id="urgency23">0</div>
+            </div>
+            <div class="glass rounded-xl p-3 sm:p-4 stat-card">
+                <div class="text-gray-400 text-xs sm:text-sm mb-1">Urgency 4-5</div>
+                <div class="text-2xl sm:text-3xl font-bold text-red-400" id="urgency45">0</div>
+            </div>
+        </div>
+
+        <div class="glass rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-6 overflow-x-auto">
+            <div class="flex justify-between items-center mb-4 md:mb-5">
+                <h2 class="text-lg sm:text-xl md:text-2xl font-bold">All Cases</h2>
+                <button onclick="refreshData()" class="px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 rounded-lg text-xs sm:text-sm hover:bg-blue-700 transition font-semibold">
+                    🔄 Refresh
+                </button>
+            </div>
+            <div class="min-w-full">
+                <table class="w-full text-xs sm:text-sm">
+                    <thead>
+                        <tr class="text-left text-gray-400">
+                            <th class="px-2 sm:px-3 md:px-4 py-2 md:py-3 text-xs sm:text-sm text-center">#</th>
+                            <th class="px-2 sm:px-3 md:px-4 py-2 md:py-3 text-xs sm:text-sm">File Name</th>
+                            <th class="px-2 sm:px-3 md:px-4 py-2 md:py-3 text-xs sm:text-sm">Upload Date</th>
+                            <th class="px-2 sm:px-3 md:px-4 py-2 md:py-3 text-xs sm:text-sm">Duration</th>
+                            <th class="px-2 sm:px-3 md:px-4 py-2 md:py-3 text-xs sm:text-sm">Summary</th>
+                            <th class="px-2 sm:px-3 md:px-4 py-2 md:py-3 text-center text-xs sm:text-sm">Urgency</th>
+                            <th class="px-2 sm:px-3 md:px-4 py-2 md:py-3 text-center text-xs sm:text-sm">Status</th>
+                            <th class="px-2 sm:px-3 md:px-4 py-2 md:py-3 text-center text-xs sm:text-sm">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr>
+                            <td colspan="8" class="text-center py-8 text-gray-400">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4">Confirm Deletion</h3>
+            <p class="text-gray-300 mb-6">Are you sure you want to delete this transcription? This will permanently remove all associated files.</p>
+            <div class="flex gap-3 justify-end">
+                <button onclick="closeDeleteModal()" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-semibold transition">
+                    No, Cancel
+                </button>
+                <button onclick="confirmDelete()" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-semibold transition">
+                    Yes, Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let deleteJobId = null;
+
+        function formatDuration(seconds) {
+            if (!seconds || seconds === 0) return '--:--';
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function updateAnalytics(transcriptions) {
+            const total = transcriptions.length;
+            const unresolved = transcriptions.filter(t => t.status === 'pending').length;
+            const resolved = transcriptions.filter(t => t.status === 'completed').length;
+            const urgency01 = transcriptions.filter(t => t.urgency_rating <= 1).length;
+            const urgency01Pending = transcriptions.filter(t => t.urgency_rating <= 1 && t.status === 'pending').length;
+            const urgency23 = transcriptions.filter(t => t.urgency_rating >= 2 && t.urgency_rating <= 3).length;
+            const urgency23Pending = transcriptions.filter(t => t.urgency_rating >= 2 && t.urgency_rating <= 3 && t.status === 'pending').length;
+            const urgency45 = transcriptions.filter(t => t.urgency_rating >= 4).length;
+            const urgency45Pending = transcriptions.filter(t => t.urgency_rating >= 4 && t.status === 'pending').length;
+
+            document.getElementById('totalCases').textContent = total;
+            document.getElementById('unresolvedCases').textContent = unresolved;
+            document.getElementById('resolvedCases').textContent = resolved;
+            document.getElementById('urgency01').innerHTML = `${urgency01} <span class="text-sm text-gray-400">(${urgency01Pending} pending)</span>`;
+            document.getElementById('urgency23').innerHTML = `${urgency23} <span class="text-sm text-gray-400">(${urgency23Pending} pending)</span>`;
+            document.getElementById('urgency45').innerHTML = `${urgency45} <span class="text-sm text-gray-400">(${urgency45Pending} pending)</span>`;
+        }
+
+        async function loadTranscriptions() {
+            try {
+                const response = await fetch('/api/transcriptions');
+                const data = await response.json();
+                updateAnalytics(data.transcriptions);
+                renderTable(data.transcriptions);
+            } catch (err) {
+                console.error('Error loading transcriptions:', err);
+                document.getElementById('tableBody').innerHTML = `
+                    <tr><td colspan="8" class="text-center py-8 text-red-400">Error loading data</td></tr>
+                `;
+            }
+        }
+
+        function renderTable(transcriptions) {
+            const tbody = document.getElementById('tableBody');
+            if (transcriptions.length === 0) {
+                tbody.innerHTML = `
+                    <tr><td colspan="8" class="text-center py-8 text-gray-400">No transcriptions yet</td></tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = transcriptions.map((t, index) => {
+                const urgencyClass = `urgency-${t.urgency_rating}`;
+                const urgencyBadgeClass = `urgency-badge-${t.urgency_rating}`;
+                const summaryText = t.summary || 'Processing...';
+                const truncatedSummary = summaryText.length > 120 
+                    ? summaryText.substring(0, 120) + '...' 
+                    : summaryText;
+                const duration = formatDuration(t.duration);
+                
+                return `
+                    <tr class="${urgencyClass} rounded-lg">
+                        <td class="px-2 sm:px-3 md:px-4 py-3 md:py-4 text-center rounded-l-lg">
+                            <div class="text-xs sm:text-sm font-bold text-gray-300">${index + 1}</div>
+                        </td>
+                        <td class="px-2 sm:px-3 md:px-4 py-3 md:py-4 font-medium">
+                            <div class="max-w-xs truncate text-xs sm:text-sm">${t.filename}</div>
+                        </td>
+                        <td class="px-2 sm:px-3 md:px-4 py-3 md:py-4">
+                            <div class="text-xs sm:text-sm whitespace-nowrap">${t.upload_date}</div>
+                        </td>
+                        <td class="px-2 sm:px-3 md:px-4 py-3 md:py-4">
+                            <div class="text-xs sm:text-sm font-mono whitespace-nowrap">${duration}</div>
+                        </td>
+                        <td class="px-2 sm:px-3 md:px-4 py-3 md:py-4">
+                            <div class="text-xs sm:text-sm max-w-md leading-relaxed">${truncatedSummary}</div>
+                        </td>
+                        <td class="px-2 sm:px-3 md:px-4 py-3 md:py-4 text-center">
+                            <span class="${urgencyBadgeClass} px-2 py-1 md:px-3 md:py-1.5 rounded-full text-xs font-bold inline-block">
+                                ${t.urgency_rating}
+                            </span>
+                        </td>
+                        <td class="px-2 sm:px-3 md:px-4 py-3 md:py-4 text-center">
+                            <button 
+                                onclick="toggleStatus('${t.job_id}', '${t.status}')"
+                                class="status-toggle px-2 py-1 md:px-3 md:py-1.5 rounded-full text-xs font-semibold ${t.status === 'completed' ? 'bg-green-600' : 'bg-yellow-600'}">
+                                ${t.status === 'completed' ? '✅ Resolved' : '❗ Unresolved'}
+                            </button>
+                        </td>
+                        <td class="px-2 sm:px-3 md:px-4 py-3 md:py-4 text-center rounded-r-lg">
+                            <div class="flex gap-2 justify-center">
+                                <a href="/view/${t.job_id}" class="inline-block px-2 py-1 md:px-3 md:py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-xs font-semibold transition">
+                                    View
+                                </a>
+                                <button onclick="showDeleteModal('${t.job_id}')" class="px-2 py-1 md:px-3 md:py-1.5 bg-red-600 hover:bg-red-700 rounded-lg text-xs font-semibold transition">
+                                    Delete
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function toggleStatus(jobId, currentStatus) {
+            const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+            try {
+                await fetch(`/api/transcriptions/${jobId}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                await loadTranscriptions();
+            } catch (err) {
+                console.error('Error updating status:', err);
+                alert('Failed to update status');
+            }
+        }
+
+        function showDeleteModal(jobId) {
+            deleteJobId = jobId;
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            deleteJobId = null;
+            document.getElementById('deleteModal').classList.remove('active');
+        }
+
+        async function confirmDelete() {
+            if (!deleteJobId) return;
+            
+            try {
+                const response = await fetch(`/api/transcriptions/${deleteJobId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    closeDeleteModal();
+                    await loadTranscriptions();
+                } else {
+                    alert('Failed to delete transcription');
+                }
+            } catch (err) {
+                console.error('Error deleting transcription:', err);
+                alert('Failed to delete transcription');
+            }
+        }
+
+        function refreshData() {
+            loadTranscriptions();
+        }
+
+        loadTranscriptions();
+        setInterval(loadTranscriptions, 30000);
+    </script>
+</body>
+</html>
